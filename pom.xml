@@ -6,12 +6,12 @@
 
     <parent>
         <groupId>mike.bootstrap</groupId>
-        <artifactId>bootstrap-dependencies</artifactId>
+        <artifactId>bootstrap-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
     <groupId>mike.samples</groupId>
-    <artifactId>sample-parent</artifactId>
+    <artifactId>samples-parent</artifactId>
     <name>${project.artifactId}</name>
     <description>Samples parent project</description>
     <packaging>pom</packaging>
