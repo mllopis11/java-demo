@@ -1,6 +1,24 @@
+# Eclipse 
+.project
+.classpath
+.settings/
+
+# Idea
+.idea
+
+# DbEaver
+.dbeaver/
+
+# Projects
+run*/
+*secret*
+*local*
+*shared* 
+
 # Compiled class file
 *.class
-
+target/
+bin/
 # Log file
 *.log
 
