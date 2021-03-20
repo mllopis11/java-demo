@@ -5,22 +5,46 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>mike.samples</groupId>
-        <artifactId>samples-parent</artifactId>
+        <groupId>mike.demo</groupId>
+        <artifactId>demo-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-      <relativePath>../samples-parent</relativePath>
+        <relativePath>../</relativePath>
     </parent>
 
-    <artifactId>svc-scheduler</artifactId>
-    <name>${project.artifactId}</name>
-    <description>Scheduler service with a minimal footprint and a straightforward API</description>
-    <packaging>pom</packaging>
-    
+    <artifactId>demo-sched-agent</artifactId>
+    <description>Scheduler agent with a minimal footprint and a straightforward API</description>
+    <packaging>jar</packaging>
+
     <properties>
-        <application.name>Samples</application.name>
-        <module.name>Scheduler-Service</module.name>
+        <module.name>Scheduler-Agent</module.name>
+
+        <!-- Scheduler -->
+        <wisp.version>2.2.0</wisp.version>
+        <cron-utils.version>9.1.3</cron-utils.version>
     </properties>
-    
+
+    <dependencies>
+        <dependency>
+            <groupId>mike.bootstrap</groupId>
+            <artifactId>bootstrap-starter-web-servlet</artifactId>
+        </dependency>
+
+        <!-- Scheduler -->
+        <!-- 
+        <dependency>
+            <groupId>com.coreoz</groupId>
+            <artifactId>wisp</artifactId>
+            <version>${wisp.version}</version>
+        </dependency>
+        -->
+        
+        <dependency>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
+            <version>${cron-utils.version}</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

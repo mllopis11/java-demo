@@ -1,0 +1,25 @@
+spring:
+  main:
+    log-startup-info: true
+  application:
+    name: sample-webapp-servlet
+
+server:
+  address: localhost
+  port: 9910
+  servlet:
+    context-path: /demo/scheduler/api
+    
+logging:
+  level:
+    mike.bootstrap: INFO
+    mike.samples: DEBUG
+    web: INFO
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    display-request-duration: true
+    operationsSorter: alpha
+    tagsSorter: alpha
+    doc-expansion: list
