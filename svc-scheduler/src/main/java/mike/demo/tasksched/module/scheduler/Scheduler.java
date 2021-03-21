@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -63,16 +64,15 @@ public final class Scheduler {
 		
 		this.name = Utils.trim(builder.name, "WispScheduler");
 		int minThreads = builder.minThreads > 0 ? builder.minThreads : 1;
-		int maxThreads = builder.maxThreads >= minThreads ? builder.maxThreads : minThreads;
+		int maxThreads = builder.maxThreads >= minThreads ? builder.maxThreads : minThreads + 4;
 		Duration threadsKeepAliveTime = builder.threadsKeepAliveTime != null ? builder.threadsKeepAliveTime : Duration.ofSeconds(30); 
 		this.timeProvider = builder.timeProvider != null ? builder.timeProvider : new TimeProviderDefault();
 		
-		this.threadPoolExecutor = new ScalingThreadPoolExecutor(
+		this.threadPoolExecutor = new ThreadPoolExecutor(
 				minThreads, maxThreads, 
-				threadsKeepAliveTime.toSeconds(),
-				TimeUnit.SECONDS,
-				new DefaultThreadFactory()
-		);
+				threadsKeepAliveTime.toSeconds(), TimeUnit.SECONDS, new 
+				LinkedBlockingQueue<>(100), 
+				new DefaultThreadFactory());
 		
 		// run job launcher thread
 		Thread launcherThread = new Thread(this::launcher, "WispLauncher");

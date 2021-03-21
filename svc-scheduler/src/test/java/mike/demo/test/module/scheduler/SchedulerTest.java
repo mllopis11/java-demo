@@ -9,17 +9,22 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mike.demo.tasksched.module.scheduler.Job;
 import mike.demo.tasksched.module.scheduler.Scheduler;
+import mike.demo.tasksched.module.scheduler.SchedulerStats;
 import mike.demo.tasksched.module.scheduler.TimeProvider;
 import mike.demo.tasksched.module.scheduler.schedule.Schedule;
 import mike.demo.tasksched.module.scheduler.schedule.ScheduleFactory;
 
 @DisplayName("Scheduler::Scheduler")
+@TestMethodOrder(OrderAnnotation.class)
 class SchedulerTest {
 
 	private static final Logger log = LoggerFactory.getLogger(SchedulerTest.class);
@@ -27,6 +32,23 @@ class SchedulerTest {
 	private static final String FooTaskName = "FooTask";
 	
 	@Test
+	@Order(1)
+	void should_return_scheduler_stats_when_default_config() {
+		Scheduler scheduler = new Scheduler.Builder().build();
+		SchedulerStats stats = scheduler.stats();
+		
+		log.debug("[Scheduler::stats] {}", stats);
+		
+		assertThat(stats.isTerminating()).isFalse();
+		assertThat(stats.getMinThreads()).isEqualTo(1);
+		assertThat(stats.getMaxThreads()).isEqualTo(5);
+		assertThat(stats.getActiveThreads()).isZero();
+		assertThat(stats.getIdleThreads()).isZero();
+		assertThat(stats.getLargestPoolSize()).isZero();
+	}
+	
+	@Test
+	@Order(2)
 	void should_not_schedule_job_for_the_nextday() {
 		
 		Scheduler scheduler = new Scheduler.Builder().build();
@@ -37,7 +59,7 @@ class SchedulerTest {
 		scheduler.schedule(new TestUtils.FooTask(), schedule);
 		
 		Job job = scheduler.findJob(FooTaskName).get();
-		log.debug("{}", job);
+		log.debug("[Scheduler::nextDay] {}", job);
 		
 		ZonedDateTime expectedDateTime = ZonedDateTime
 					.of(LocalDate.now().plusDays(1), scheduleTime, ZoneId.systemDefault())
@@ -52,6 +74,7 @@ class SchedulerTest {
 	}
 	
 	@Test
+	@Order(3)
 	void should_not_schedule_jobs_with_the_same_name() {
 		
 		Scheduler scheduler = new Scheduler.Builder().build();
@@ -60,7 +83,7 @@ class SchedulerTest {
 		scheduler.schedule(new TestUtils.FooTask(), schedule);
 		
 		Job job = scheduler.findJob(FooTaskName).get();
-		log.debug("{}", job);
+		log.debug("[Scheduler::sameJobName] {}", job);
 		
 		assertThatIllegalArgumentException()
 			.isThrownBy(() -> scheduler.schedule(new TestUtils.FooTask(), schedule));
@@ -69,6 +92,7 @@ class SchedulerTest {
 	}
 	
 	@Test
+	@Order(99)
 	void should_run_scheduled_job_with_when_shedule_time_is_reached() {
 		
 		TimeProvider systemTimeProviderMinus1min = () -> ZonedDateTime.now().minusMinutes(1);
