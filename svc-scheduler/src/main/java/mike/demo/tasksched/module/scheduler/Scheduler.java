@@ -14,7 +14,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -68,10 +67,9 @@ public final class Scheduler {
 		Duration threadsKeepAliveTime = builder.threadsKeepAliveTime != null ? builder.threadsKeepAliveTime : Duration.ofSeconds(30); 
 		this.timeProvider = builder.timeProvider != null ? builder.timeProvider : new TimeProviderDefault();
 		
-		this.threadPoolExecutor = new ThreadPoolExecutor(
+		this.threadPoolExecutor = new ScalingThreadPoolExecutor(
 				minThreads, maxThreads, 
-				threadsKeepAliveTime.toSeconds(), TimeUnit.SECONDS, new 
-				LinkedBlockingQueue<>(100), 
+				threadsKeepAliveTime.toSeconds(), TimeUnit.SECONDS, 
 				new DefaultThreadFactory());
 		
 		// run job launcher thread

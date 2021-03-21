@@ -38,9 +38,9 @@ final class ScalingThreadPoolExecutor extends ThreadPoolExecutor {
 			try {
 				// Rejected work add to Queue.
 				executor.getQueue().put(r);
-			} catch (InterruptedException ie) {
+			} catch (InterruptedException e) {
 				// should never happen since we never wait
-				throw new RejectedExecutionException(ie);
+				throw new RejectedExecutionException(e);
 			}
 		}
 	}
