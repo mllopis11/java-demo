@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import mike.bootstrap.utilities.helpers.Dates;
 import mike.bootstrap.utilities.helpers.Timer;
+import mike.bootstrap.utilities.helpers.Utils;
 import mike.demo.tasksched.module.scheduler.schedule.Schedule;
 import mike.demo.tasksched.module.scheduler.schedule.ScheduleFactory;
 
@@ -54,28 +55,27 @@ public final class Scheduler {
 	private volatile boolean shuttingDown;
 
 	// constructors
-
-	public Scheduler() {
-		this(new SchedulerConfig.Builder().build());
-	}
 	
 	/**
 	 * Create a scheduler according to the configuration
 	 */
-	public Scheduler(SchedulerConfig config) {
+	private Scheduler(Builder builder) {
 		
-		this.name = config.getName();
-		this.timeProvider = config.getTimeProvider();
-
+		this.name = Utils.trim(builder.name, "WispScheduler");
+		int minThreads = builder.minThreads > 0 ? builder.minThreads : 1;
+		int maxThreads = builder.maxThreads >= minThreads ? builder.maxThreads : minThreads;
+		Duration threadsKeepAliveTime = builder.threadsKeepAliveTime != null ? builder.threadsKeepAliveTime : Duration.ofSeconds(30); 
+		this.timeProvider = builder.timeProvider != null ? builder.timeProvider : new TimeProviderDefault();
+		
 		this.threadPoolExecutor = new ScalingThreadPoolExecutor(
-			config.getMinThreads(), config.getMaxThreads(), 
-			config.getThreadsKeepAliveTime().toSeconds(),
-			TimeUnit.SECONDS,
-			new DefaultThreadFactory()
+				minThreads, maxThreads, 
+				threadsKeepAliveTime.toSeconds(),
+				TimeUnit.SECONDS,
+				new DefaultThreadFactory()
 		);
 		
 		// run job launcher thread
-		Thread launcherThread = new Thread(this::launcher, "WispMonitor");
+		Thread launcherThread = new Thread(this::launcher, "WispLauncher");
 		
 		if (launcherThread.isDaemon()) {
 			launcherThread.setDaemon(false);
@@ -86,33 +86,18 @@ public final class Scheduler {
 
 	// public API
 
-	/**
-	 * Schedule the executions of a process.<br>
-	 * <br>
-	 * If a job already exists with the same name and has the status {@link JobStatus#DONE},
-	 * then the created job will inherit the stats of the existing done job:
-	 * {@link Job#executionsCount()} and {@link Job#lastExecutionTimeInMillis()}
-	 *
-	 * @param nullableName The name of the created job
-	 * @param runnable The process to be executed at a schedule
-	 * @param when The {@link Schedule} at which the process will be executed
-	 * @return The corresponding {@link Job} created.
-	 * @throws NullPointerException if {@code runnable} or {@code when} are {@code null}
-	 * @throws IllegalArgumentException if the same {@code nullableName} is
-	 * scheduled twice whereas the corresponding job status is not {@link JobStatus#DONE}
-	 */
-	public Job schedule(String name, Runnable runnable, Schedule when) {
+	public Job schedule(JobTask task, Schedule when) {
 		
-		Objects.requireNonNull(name, "Name must not be null");
-		Objects.requireNonNull(runnable, "Runnable must not be null");
+		Objects.requireNonNull(task, "Runnable task must not be null");
+		Objects.requireNonNull(task.jobName(), "Name must not be null");
 		Objects.requireNonNull(when, "Schedule must not be null");
 
-		Job job = prepareJob(name, runnable, when);
+		Job job = prepareJob(task, when);
 		
 		ZonedDateTime currentDateTime = timeProvider.currentDateTime();
 		
 		if ( when.nextExecutionDateTime(currentDateTime).isBefore(currentDateTime) ) {
-			log.warn("The job '{}' is scheduled at a paste date: it will never be executed", name);
+			log.warn("The job '{}' is scheduled at a paste date: it will never be executed", job.name());
 		}
 
 		log.info("Scheduling job '{}' to run {}", job.name(), job.schedule());
@@ -213,6 +198,7 @@ public final class Scheduler {
 		log.info("[{}] Shutdown invoked ...", this.name);
 
 		if ( ! shuttingDown ) {
+			
 			synchronized (this) {
 				shuttingDown = true;
 				threadPoolExecutor.shutdown();
@@ -253,34 +239,34 @@ public final class Scheduler {
 
 	// internal
 
-	private Job prepareJob(String name, Runnable runnable, Schedule when) {
+	private Job prepareJob(JobTask task, Schedule when) {
 		
 		// lock needed to make sure 2 jobs with the same name are not submitted at the same time
 		synchronized (indexedJobsByName) {
-			Job lastJob = findJob(name).orElse(null);
+			Job lastJob = findJob(task.jobName()).orElse(null);
 
 			if (lastJob != null && lastJob.status() != JobStatus.DONE) {
-				throw new IllegalArgumentException("A job is already scheduled with the name:" + name);
+				throw new IllegalArgumentException("A job is already scheduled with the name:" + task.jobName());
 			}
 
 			Job job = new Job(
 				JobStatus.DONE,
 				Schedule.EPOCH_ZONED_DATE_TIME,
 				lastJob != null ? lastJob.executionsCount() : 0,
-				lastJob != null ? lastJob.lastExecutionStartDateTime() : null,
-				lastJob != null ? lastJob.lastExecutionEndDateTime() : null,
-				name,
-				when,
-				runnable
+				lastJob != null ? lastJob.lastExecutionStartDateTime() : Schedule.EPOCH_ZONED_DATE_TIME,
+				lastJob != null ? lastJob.lastExecutionEndDateTime() : Schedule.EPOCH_ZONED_DATE_TIME,
+				task,
+				when
 			);
 			
-			indexedJobsByName.put(name, job);
+			indexedJobsByName.put(task.jobName(), job);
 
 			return job;
 		}
 	}
 
 	private synchronized void scheduleNextExecution(Job job) {
+		
 		// clean up
 		job.setRunningJob(null);
 
@@ -323,7 +309,7 @@ public final class Scheduler {
 
 			CompletableFuture<Job> cancelHandle = cancelHandles.remove(job.name());
 			
-			if(cancelHandle != null) {
+			if (cancelHandle != null) {
 				cancelHandle.complete(job);
 			}
 		}
@@ -402,6 +388,7 @@ public final class Scheduler {
 	 * The wrapper around a job that will be executed in the thread pool.
 	 * It is especially in charge of logging, changing the job status
 	 * and checking for the next job to be executed.
+	 * 
 	 * @param jobToRun the job to execute
 	 */
 	private void runJob(Job jobToRun) {
@@ -409,7 +396,7 @@ public final class Scheduler {
 		ZonedDateTime startExecutionDateTime = timeProvider.currentDateTime();
 		
 		if (jobToRun.nextExecutionDateTime().isBefore(startExecutionDateTime)) {
-			log.debug("Job '{}' execution was delayed (expected: {})", jobToRun.name(), Dates.format(jobToRun.nextExecutionDateTime()) );
+			log.debug("Job '{}' execution was delayed (expected: {})", jobToRun.name(), Dates.format(jobToRun.nextExecutionDateTime()));
 		}
 		
 		jobToRun.setStatus(JobStatus.RUNNING);
@@ -419,23 +406,23 @@ public final class Scheduler {
 		Timer tm = new Timer();
 		
 		try {
-			jobToRun.runnable().run();
+			jobToRun.jobTask().run();
 		} catch(Exception t) {
-			log.error("Error during job '{}' execution", jobToRun.name(), t);
+			log.error("Job '{}' execution aborded: {}, causedBy: ", jobToRun.name(), t.getMessage(), t);
 		}
 		
 		jobToRun.setExecutionsCount(jobToRun.executionsCount() + 1);
 		jobToRun.setLastExecutionEndDateTime(timeProvider.currentDateTime());
 		jobToRun.setThreadRunningJob(null);
 
-		log.debug("Job '{}' executed in ", jobToRun.name(), tm.toSeconds());
+		log.debug("Job '{}' executed in {}", jobToRun.name(), tm.toSeconds());
 
 		if (shuttingDown) {
 			return;
 		}
 		
 		synchronized (this) {
-			scheduleNextExecution(jobToRun);
+			this.scheduleNextExecution(jobToRun);
 		}
 	}
 
@@ -444,7 +431,7 @@ public final class Scheduler {
 		@Override
 		public Thread newThread(Runnable r) {
 			
-			Thread thread = new Thread(r, "SchedulerWorker #" + threadCounter.getAndIncrement());
+			Thread thread = new Thread(r, "WispWorker #" + threadCounter.getAndIncrement());
 			
 			if (thread.isDaemon()) {
 				thread.setDaemon(false);
@@ -458,4 +445,41 @@ public final class Scheduler {
 		}
 	}
 
+	public static class Builder {
+		
+		private String name;
+		private int minThreads;
+		private int maxThreads;
+		private Duration threadsKeepAliveTime;
+		private TimeProvider timeProvider;
+		
+		public Builder withName(String name) {
+			this.name = name;
+			return this;
+		}
+		
+		public Builder withMinThreads(int minThreads) {
+			this.minThreads = minThreads;
+			return this;
+		}
+		
+		public Builder wuthMaxThreads(int maxThreads) {
+			this.maxThreads = maxThreads;
+			return this;
+		}
+		
+		public Builder withThreadsKeepAliveTime(Duration duration) {
+			this.threadsKeepAliveTime = duration;
+			return this;
+		}
+		
+		public Builder withTimeProvider(TimeProvider timeProvider) {
+			this.timeProvider = timeProvider;
+			return this;
+		}
+		
+		public Scheduler build() {
+			return new Scheduler(this);
+		}
+	}
 }

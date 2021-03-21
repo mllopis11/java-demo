@@ -48,12 +48,16 @@ public class ScheduleFactory {
 	}
 	
 	public static Schedule atFixedTimeOnWeekDays(LocalTime localTime, List<Weekdays> weekdays) {
-		String days = weekdays.stream().map(day -> StringUtils.substring(day.name(), 0, 3)).collect(Collectors.joining(","));
-		String cronExpression = buildCronExpression(localTime, days);
-		return ScheduleFactory.withCronExpression(cronExpression);
+		return weekdays.isEmpty() ? 
+						ScheduleFactory.atFixedTimeEveryDay(localTime)
+						: ScheduleFactory.withCronExpression(buildCronExpression(localTime, buildCronDays(weekdays)));
 	}
 	
-	private static String buildCronExpression(LocalTime localTime, String weekDays) {
-		return String.format("0 %d %d ? * %s *", localTime.getMinute(), localTime.getHour(), weekDays.isEmpty() ? "*" : weekDays);
+	private static String buildCronExpression(LocalTime localTime, String cronDays) {
+		return String.format("0 %d %d ? * %s *", localTime.getMinute(), localTime.getHour(), cronDays);
+	}
+	
+	private static String buildCronDays(List<Weekdays> weekDays) {
+		return weekDays.stream().map(day -> StringUtils.substring(day.name(), 0, 3)).collect(Collectors.joining(","));
 	}
 }

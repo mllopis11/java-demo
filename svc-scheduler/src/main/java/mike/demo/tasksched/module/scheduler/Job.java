@@ -21,9 +21,8 @@ public class Job {
 	private ZonedDateTime lastExecutionStartDateTime;
 	private ZonedDateTime lastExecutionEndDateTime;
 	private Thread threadRunningJob;
-	private final String name;
 	private Schedule schedule;
-	private final Runnable runnable;
+	private final JobTask jobTask;
 	private Runnable runningJob;
 
 	// public API
@@ -59,30 +58,29 @@ public class Job {
 	}
 
 	public String name() {
-		return name;
+		return this.jobTask.jobName();
 	}
 
 	public Schedule schedule() {
 		return schedule;
 	}
 
-	public Runnable runnable() {
-		return runnable;
+	public JobTask jobTask() {
+		return jobTask;
 	}
 
 	// package API
 
 	Job(JobStatus status, ZonedDateTime nextExecutionDateTime, int executionsCount,
 			ZonedDateTime lastExecutionStartDateTime, ZonedDateTime lastExecutionEndDateTime,
-			String name, Schedule schedule, Runnable runnable) {
+			JobTask jobTask, Schedule schedule) {
 		this.setStatus(status);
 		this.setNextExecutionDateTime(nextExecutionDateTime);
 		this.setExecutionsCount(executionsCount);
 		this.setLastExecutionStartDateTime(lastExecutionStartDateTime);
 		this.setLastExecutionEndDateTime(lastExecutionEndDateTime);;
-		this.name = name;
 		this.setSchedule(schedule);
-		this.runnable = runnable;
+		this.jobTask = jobTask;
 	}
 
 	void setStatus(JobStatus status) {
@@ -126,7 +124,7 @@ public class Job {
 	@Override
 	public String toString() {
 		return String.format("Job %s [%s] nextExecutionAt: %s (schedule: %s)", 
-				name, status, Dates.format(nextExecutionDateTime), schedule);
+				this.name(), status, Dates.format(nextExecutionDateTime), schedule);
 	}
 
 }
