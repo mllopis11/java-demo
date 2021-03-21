@@ -2,7 +2,7 @@ spring:
   main:
     log-startup-info: true
   application:
-    name: demo-task-sched
+    name: demo-task-sched-db
 
 server:
   address: localhost
