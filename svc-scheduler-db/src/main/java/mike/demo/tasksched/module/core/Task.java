@@ -4,9 +4,10 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 
+import mike.bootstrap.utilities.helpers.Dates;
 import mike.demo.tasksched.module.core.schedule.Schedule;
 
-class Task {
+public class Task {
  
 	private final TaskWorker worker;
 	
@@ -109,11 +110,11 @@ class Task {
 		// formatter:off
 		builder.append("name=").append(this.getName())
 				.append(", state=").append(state)
-				.append(", schedule=").append(schedule)
-				.append(", nextExecutionDateTime=").append(nextExecutionDateTime)
-				.append(", lastExecutionStartDateTime=").append(lastExecutionStartDateTime)
-				.append(", lastExecutionEndDateTime=").append(lastExecutionEndDateTime)
-				.append(", executionCount=").append(executionCount);
+				.append(", nextExecutionDateTime=").append(Dates.format(nextExecutionDateTime))
+				.append(", lastExecutionStartDateTime=").append(Dates.format(lastExecutionStartDateTime))
+				.append(", lastExecutionEndDateTime=").append(Dates.format(lastExecutionEndDateTime))
+				.append(", executionCount=").append(executionCount)
+				.append(", schedule=").append(schedule);
 		// formatter:on
 		
 		return builder.append("]").toString();

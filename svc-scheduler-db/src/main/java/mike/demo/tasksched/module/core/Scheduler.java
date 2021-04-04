@@ -1,12 +1,14 @@
 package mike.demo.tasksched.module.core;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +16,10 @@ import org.slf4j.LoggerFactory;
 import mike.bootstrap.utilities.helpers.Dates;
 import mike.bootstrap.utilities.helpers.Utils;
 import mike.demo.tasksched.module.core.time.TimeProvider;
+import mike.demo.tasksched.module.core.time.TimeProviderFactory;
+import mike.demo.tasksched.module.core.repository.TaskRepository;
+import mike.demo.tasksched.module.core.repository.TaskRepositoryFactory;
 import mike.demo.tasksched.module.core.schedule.Schedule;
-import mike.demo.tasksched.module.core.time.SystemDateTimeProvider;
 
 public class Scheduler {
 
@@ -27,50 +31,102 @@ public class Scheduler {
 	private final ThreadPoolExecutor threadPoolExecutor;
 	private final Duration shutdownMaxWaitInSeconds = Duration.ofSeconds(20); 
 	private final TaskManager taskManager;
+	private final SchedulerState schedulerState;
 	
-	private volatile SchedulerState schedulerState = SchedulerState.READY;
-	private AtomicBoolean launcherThreadStarted = new AtomicBoolean(false);
+	// Launcher
+	private Thread launcherThread;
+	private final AtomicBoolean launcherThreadAlive = new AtomicBoolean(false);
+	private final AtomicBoolean launcherThreadSuspended = new AtomicBoolean(false);
+	private final int launcherScanIntervalInSeconds; 
 	
 	private Scheduler(Builder builder) {
 		
-		this.name = Utils.trim(builder.name, "JobScheduler");
-		int minThreads = builder.minThreads > 0 ? builder.minThreads : 1;
-		int maxThreads = builder.maxThreads >= minThreads ? builder.maxThreads : minThreads + 4;
-		Duration threadsKeepAliveTime = builder.threadsKeepAliveTime != null ? builder.threadsKeepAliveTime : Duration.ofSeconds(30); 
-		TimeProvider timeProvider = builder.timeProvider != null ? builder.timeProvider : new SystemDateTimeProvider();
-		TaskRepository taskRepository = builder.taskRepository != null ? builder.taskRepository : new TaskRepositoryDefault();
-		
-		this.taskManager = new TaskManager(taskRepository, timeProvider);
+		this.name = builder.name;
+		this.launcherScanIntervalInSeconds = builder.launcherScanIntervalInSeconds; 
+
+		this.taskManager = new TaskManager(builder.taskRepository, builder.timeProvider);
 		
 		this.threadPoolExecutor = new ThreadPoolExecutor(
-				minThreads, maxThreads, 
-				threadsKeepAliveTime.toSeconds(), TimeUnit.SECONDS, new LinkedBlockingQueue<>(), new DefaultThreadFactory());
+				builder.minThreads, builder.maxThreads, 
+				10, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), new DefaultThreadFactory());
 		
-		log.info("{}", this.stats());
-	}
-	
-	public SchedulerStats stats() {
-		return new SchedulerStats(this.name, this.schedulerState, this.threadPoolExecutor);
+		this.schedulerState = new SchedulerState(name, threadPoolExecutor);
+		
+		log.info("{}", this.state());
 	}
 	
 	public SchedulerState state() {
+		this.schedulerState.setStatistics(threadPoolExecutor);
 		return this.schedulerState;
 	}
 	
-	public void start() {
-		// Run job launcher background thread
-		Thread launcherThread = new Thread(this::launcher, "JobLauncher");
-		launcherThread.setDaemon(false);
-		launcherThread.setPriority(Thread.MAX_PRIORITY);
-		launcherThread.start();	
-		
-		while ( this.schedulerState.isReady() ) {}
-		
-		log.info("[{}] {} ({} started)", this.name, this.schedulerState, launcherThread.getName());
+	public SchedulerStatus status() {
+		return this.schedulerState.getStatus();
 	}
 	
-	public void suspend() {
-		this.schedulerState = SchedulerState.SUSPENDED;
+	public Optional<Task> task(String name) {
+		return this.taskManager.find(name);
+	}
+	
+	public Stream<Task> tasks() {
+		return this.taskManager.findAll();
+	}
+	
+	public synchronized boolean start() {
+		
+		if ( launcherThread != null ) {
+			log.warn("[{}] {} (already started)", this.name, this.status());
+			return false;
+		}
+		
+		// Run job launcher background thread
+		
+		launcherThread = new Thread(this::launcher, "TaskLauncher");
+		launcherThread.setDaemon(false);
+		launcherThread.setPriority(Thread.NORM_PRIORITY);
+		launcherThread.start();	
+		
+		while ( this.status().isReady() ) {}
+		
+		log.info("{}", this.state());
+		
+		return this.launcherThreadAlive.get();
+	}
+	
+	public boolean suspend() {
+		
+		if ( launcherThread == null ) {
+			log.warn("[{}] {} (NotStarted) cannot invoke suspend action on unstarted scheduler !!!", this.name, this.status());
+			return false;
+		}
+		
+		this.schedulerState.setStatus(SchedulerStatus.SUSPENDED);
+		
+		while ( ! this.launcherThreadSuspended.get() ) {
+			// Wait
+		}
+		
+		log.warn("{}", this.state());
+		
+		return this.launcherThreadSuspended.get();
+	}
+	
+	public boolean release() {
+		
+		if ( launcherThread == null ) {
+			log.warn("[{}] {} (NotStarted) cannot invoke release action on unstarted scheduler !!!", this.name, this.status());
+			return false;
+		}
+		
+		this.schedulerState.setStatus(SchedulerStatus.LISTEN);
+		
+		while ( this.launcherThreadSuspended.get() ) { 
+			// Wait
+		}
+		
+		log.info("{}", this.state());
+		
+		return ! this.launcherThreadSuspended.get();
 	}
 	
 	/**
@@ -79,27 +135,29 @@ public class Scheduler {
 	 */
 	public void shutdown()  {
 		
-		this.schedulerState = SchedulerState.SHUTDOWN;
+		this.schedulerState.setStatus(SchedulerStatus.SHUTDOWN);
 		this.threadPoolExecutor.shutdown();
-		
-		log.info("{}", this.stats());
 
-		while (this.launcherThreadStarted.get() ) {}
+		log.info("{}", this.state());
+		
+		while ( this.launcherThreadAlive.get() ) {}
 		
 		try {
 			this.threadPoolExecutor.awaitTermination(shutdownMaxWaitInSeconds.toSeconds(), TimeUnit.SECONDS);
-			this.schedulerState = SchedulerState.STOPPED;
+			this.schedulerState.setStatus(SchedulerStatus.STOPPED);
 		} catch (InterruptedException ie) {
 			if ( this.threadPoolExecutor.getActiveCount() > 0 ) {
 				log.warn("[{}] Shutdown timeout (some threads can be still running (cause: {})", this.name, ie.getMessage());
 			}
 		}
 		
-		log.info("{}", this.stats());
+		log.info("{}", this.state());
 	}
 	
 	public Task schedule(TaskWorker worker, Schedule when) {
-		return this.taskManager.schedule(worker, when);
+		Task task = this.taskManager.schedule(worker, when);
+		log.info("[{}] New {}", this.name, task);
+		return task;
 	}
 	
 	/**
@@ -108,15 +166,19 @@ public class Scheduler {
 	 */
 	private void launcher() { 
 		
-		this.schedulerState = SchedulerState.LISTEN;
+		this.schedulerState.setStatus(SchedulerStatus.LISTEN);
+		this.launcherThreadAlive.set(true);
 		
-		this.launcherThreadStarted.set(true);
+		log.info("[{}] Listener starting ...", this.name);
 		
-		while ( this.schedulerState.isNotStopping() ) {
+		while ( this.status().isNotStopping() ) {
 			
-			if ( this.schedulerState.isListening() ) {
+			if ( this.status().isListening() ) {
 				
-				log.debug("[{}] looking for job to execute ...", this.name);
+				this.schedulerState.setLastScan();
+				this.launcherThreadSuspended.set(false);
+				
+				log.debug("[{}] looking for job to execute (currentDateTime: {})", this.name, Dates.format(taskManager.currentDateTime()));
 				
 				this.taskManager.findTasksToRun().forEach( task -> {
 					log.info("[{}] submit {} (scheduledAt: {})", this.name, task.getName(), Dates.format(task.getNextExecutionDateTime()));
@@ -124,18 +186,18 @@ public class Scheduler {
 					this.threadPoolExecutor.submit(taskRunner);
 				});
 				
-			} else {
-				log.warn("[{}] Launcher {}", this.name, this.schedulerState);
-			}
+			} else if ( this.status().isSuspended() && ! launcherThreadSuspended.get() ) {
+				this.launcherThreadSuspended.set(true);
+			} 
 			
-			if ( this.schedulerState.isNotStopping() ) {
-				Utils.pause(5);
+			if ( this.status().isNotStopping() ) {
+				Utils.pause( ! this.launcherThreadSuspended.get() ? launcherScanIntervalInSeconds : 1);
 			}
 		}
 		
-		this.launcherThreadStarted.set(false);
+		log.info("[{}] Listener stopped", this.name);
 		
-		log.info("[{}] Launcher stopped", this.name);
+		this.launcherThreadAlive.set(false);
 	}
 	
 	/**
@@ -148,7 +210,7 @@ public class Scheduler {
 		@Override
 		public Thread newThread(Runnable r) {
 			
-			Thread thread = new Thread(r, "JobWorker#" + threadCounter.getAndIncrement());
+			Thread thread = new Thread(r, "TaskWorker#" + threadCounter.getAndIncrement());
 			
 			if (thread.isDaemon()) {
 				thread.setDaemon(false);
@@ -169,16 +231,19 @@ public class Scheduler {
 	 */
 	public static class Builder {
 		
-		private String name;
+		private final String name;
 		private int minThreads;
 		private int maxThreads;
-		private Duration threadsKeepAliveTime;
+		private int launcherScanIntervalInSeconds; 
 		private TimeProvider timeProvider;
 		private TaskRepository taskRepository;
 		
-		public Builder withName(String name) {
-			this.name = name;
-			return this;
+		public Builder() {
+			this(null);
+		}
+
+		public Builder(String name) {
+			this.name = Utils.trim(name, "TaskScheduler");
 		}
 		
 		public Builder withMinThreads(int minThreads) {
@@ -191,8 +256,8 @@ public class Scheduler {
 			return this;
 		}
 		
-		public Builder withThreadsKeepAliveTime(Duration duration) {
-			this.threadsKeepAliveTime = duration;
+		public Builder withLauncherScanIntervalInSeconds(int seconds) {
+			this.launcherScanIntervalInSeconds = seconds;
 			return this;
 		}
 		
@@ -207,6 +272,12 @@ public class Scheduler {
 		}
 		
 		public Scheduler build() {
+			this.minThreads = this.minThreads > 10 ? this.minThreads : 5;
+			this.maxThreads = this.maxThreads >= minThreads ? this.maxThreads : 20;
+			this.timeProvider = this.timeProvider != null ? this.timeProvider : TimeProviderFactory.newSystemTimeProvider();
+			this.taskRepository = this.taskRepository != null ? this.taskRepository : TaskRepositoryFactory.newDefaultTaskRepository();
+			this.launcherScanIntervalInSeconds = this.launcherScanIntervalInSeconds >= 5 ? this.launcherScanIntervalInSeconds : 5;
+			
 			return new Scheduler(this);
 		}
 	}

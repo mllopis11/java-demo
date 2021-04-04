@@ -25,6 +25,6 @@ public enum TaskState {
 	}
 	
 	public boolean isScheduled() {
-		return this == DISABLED;
+		return this == SCHEDULED;
 	}
 }

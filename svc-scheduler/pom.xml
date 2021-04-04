@@ -7,8 +7,7 @@
     <parent>
         <groupId>mike.demo</groupId>
         <artifactId>demo-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../</relativePath>
+        <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>demo-sched-agent</artifactId>
@@ -26,17 +25,8 @@
     <dependencies>
         <dependency>
             <groupId>mike.bootstrap</groupId>
-            <artifactId>bootstrap-starter-web-servlet</artifactId>
+            <artifactId>bootstrap-utilities</artifactId>
         </dependency>
-
-        <!-- Scheduler -->
-        <!-- 
-        <dependency>
-            <groupId>com.coreoz</groupId>
-            <artifactId>wisp</artifactId>
-            <version>${wisp.version}</version>
-        </dependency>
-        -->
         
         <dependency>
             <groupId>com.cronutils</groupId>

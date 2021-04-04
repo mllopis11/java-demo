@@ -1,4 +1,4 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.module.core.repository;
 
 import java.time.ZonedDateTime;
 import java.util.Collections;
@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import mike.bootstrap.utilities.exceptions.ResourceAlreadyExistException;
 import mike.bootstrap.utilities.exceptions.ResourceNotFoundException;
+import mike.demo.tasksched.module.core.Task;
 
 class TaskRepositoryDefault implements TaskRepository {
 
@@ -37,7 +38,9 @@ class TaskRepositoryDefault implements TaskRepository {
 	@Override
 	public Task insert(Task task) {
 		this.find(task.getName())
-			.ifPresent( t -> new ResourceAlreadyExistException("task already exists: %s", t.getName()));
+				.ifPresent( t -> { 
+					throw new ResourceAlreadyExistException("task already exists: %s", t.getName()); 
+				});
 		
 		this.save(task);
 		

@@ -16,8 +16,7 @@ import com.cronutils.model.field.expression.Weekdays;
 import mike.demo.tasksched.module.core.schedule.Schedule;
 import mike.demo.tasksched.module.core.schedule.ScheduleFactory;
 import mike.demo.tasksched.module.core.time.TimeProvider;
-import mike.demo.tasksched.module.core.time.SystemDateTimeProvider;
-
+import mike.demo.tasksched.module.core.time.TimeProviderFactory;
 
 @DisplayName("Scheduler::Schedule")
 class ScheduleTest {
@@ -27,7 +26,7 @@ class ScheduleTest {
 	@Test
 	void should_return_next_execution_time_minus_one_when_disabled_schedule() {
 		
-		TimeProvider time = new SystemDateTimeProvider();
+		TimeProvider time = TimeProviderFactory.newSystemTimeProvider();
 		Schedule schedule = ScheduleFactory.willNeverBeExecuted;
 		
 		assertThat(schedule.nextExecutionDateTime(time.currentDateTime())).isEqualTo(Schedule.WILL_NOT_BE_EXECUTED_AGAIN);
@@ -37,9 +36,8 @@ class ScheduleTest {
 	@Test
 	void should_return_next_execution_on_monday_07h10_when_monday_to_friday_at_07h10() {
 		
-		TimeProvider time = new FixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
-		
-		Schedule schedule = ScheduleFactory.atFixedTimeFromMondayToFriday(LocalTime.of(7, 10));
+		TimeProvider time = TimeProviderFactory.newFixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
+		Schedule schedule = ScheduleFactory.atFixedTimeMondayToFriday(LocalTime.of(7, 10));
 		
 		ZonedDateTime expectedScheduleTime = toZonedDateTime(2021, 03, 22, 07, 10);
 		ZonedDateTime computedScheduleTime = schedule.nextExecutionDateTime(time.currentDateTime());
@@ -54,8 +52,7 @@ class ScheduleTest {
 	@Test
 	void should_return_next_execution_tuesday_07h10_when_tuesday_and_friday_at_07h10() {
 		
-		TimeProvider time = new FixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
-		
+		TimeProvider time = TimeProviderFactory.newFixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
 		Schedule schedule = ScheduleFactory.atFixedTimeOnWeekDays(LocalTime.of(7, 10), Weekdays.TUESDAY, Weekdays.FRIDAY);
 		
 		ZonedDateTime expectedScheduleTime = toZonedDateTime(2021, 03, 23, 07, 10);
@@ -70,8 +67,7 @@ class ScheduleTest {
 	
 	@Test
 	void should_return_next_execution_saturday_07h10_when_every_day_at_07h10() {
-		TimeProvider time = new FixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
-		
+		TimeProvider time = TimeProviderFactory.newFixedTimeProvider(toZonedDateTime(2021, 03, 19, 7, 20));
 		Schedule schedule = ScheduleFactory.atFixedTimeEveryDay(LocalTime.of(7, 10));
 		
 		ZonedDateTime expectedScheduleTime = toZonedDateTime(2021, 03, 20, 07, 10);
@@ -86,19 +82,5 @@ class ScheduleTest {
 	
 	private ZonedDateTime toZonedDateTime(int year, int month, int day, int hour, int minute) {
 		return ZonedDateTime.of(year, month, day, hour, minute, 0, 0, ZoneId.systemDefault());
-	}
-}
-
-class FixedTimeProvider implements TimeProvider {
-
-	private final ZonedDateTime fixedDateTime;
-	
-	FixedTimeProvider(ZonedDateTime dateTime) {
-		this.fixedDateTime = dateTime;
-	}
-	
-	@Override
-	public ZonedDateTime currentDateTime() {
-		return fixedDateTime;
 	}
 }

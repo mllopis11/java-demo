@@ -1,8 +1,10 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.module.core.repository;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import mike.demo.tasksched.module.core.Task;
 
 public interface TaskRepository {
 

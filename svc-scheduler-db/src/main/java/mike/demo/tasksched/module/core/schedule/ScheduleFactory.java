@@ -33,7 +33,7 @@ public class ScheduleFactory {
 		return CronSchedule.parseQuartzCron(cronExpression);
 	}
 	
-	public static Schedule atFixedTimeFromMondayToFriday(LocalTime localTime) {
+	public static Schedule atFixedTimeMondayToFriday(LocalTime localTime) {
 		String cronExpression = buildCronExpression(localTime, "MON-FRI");
 		return ScheduleFactory.withCronExpression(cronExpression);
 	}
@@ -54,7 +54,7 @@ public class ScheduleFactory {
 	}
 	
 	private static String buildCronExpression(LocalTime localTime, String cronDays) {
-		return String.format("0 %d %d ? * %s *", localTime.getMinute(), localTime.getHour(), cronDays);
+		return String.format("%d %d %d ? * %s *", localTime.getSecond(), localTime.getMinute(), localTime.getHour(), cronDays);
 	}
 	
 	private static String buildCronDays(List<Weekdays> weekDays) {

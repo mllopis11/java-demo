@@ -12,10 +12,10 @@
 
     <groupId>mike.demo</groupId>
     <artifactId>demo-parent</artifactId>
-    <name>${project.artifactId}</name>
+    <version>0.1.0-SNAPSHOT</version>
     <description>Samples parent project</description>
     <packaging>pom</packaging>
-    
+
     <properties>
         <application.name>Demo</application.name>
         <module.name>Demo-Parent</module.name>

@@ -7,10 +7,9 @@ import java.time.ZonedDateTime;
  */
 @FunctionalInterface
 public interface TimeProvider {
-
+	
 	/**
 	 * Returns the current time in milliseconds
 	 */
 	ZonedDateTime currentDateTime();
-
 }

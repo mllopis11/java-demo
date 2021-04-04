@@ -6,13 +6,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
+import mike.bootstrap.utilities.helpers.Utils;
 import mike.demo.tasksched.module.core.Scheduler;
+import mike.demo.tasksched.module.core.SchedulerStatus;
 import mike.demo.tasksched.module.core.SchedulerState;
-import mike.demo.tasksched.module.core.SchedulerStats;
 
 @DisplayName("Scheduler::Scheduler")
 @TestMethodOrder(OrderAnnotation.class)
@@ -24,12 +25,11 @@ class SchedulerTest {
 	@Order(1)
 	void should_return_scheduler_stats_when_default_config() {
 		Scheduler scheduler = new Scheduler.Builder().build();
-		SchedulerStats stats = scheduler.stats();
+		SchedulerState stats = scheduler.state();
 		
-		assertThat(stats.isTerminating()).isFalse();
-		assertThat(stats.getState().isReady()).isTrue();
-		assertThat(stats.getMinThreads()).isEqualTo(1);
-		assertThat(stats.getMaxThreads()).isEqualTo(5);
+		assertThat(stats.getStatus().isReady()).isTrue();
+		assertThat(stats.getMinThreads()).isEqualTo(5);
+		assertThat(stats.getMaxThreads()).isEqualTo(20);
 		assertThat(stats.getActiveThreads()).isZero();
 		assertThat(stats.getIdleThreads()).isZero();
 		assertThat(stats.getLargestPoolSize()).isZero();
@@ -39,16 +39,30 @@ class SchedulerTest {
 	
 	@Test
 	@Order(10)
-	void should_manager_scheduler() {
+	void should_suspend_and_release_scheduler() {
+		
+		log.debug("***** Should Suspend then Release Scheduler *****");
 		
 		Scheduler scheduler = new Scheduler.Builder().build();
 		
-		assertThat(scheduler.state()).isEqualTo(SchedulerState.READY);
+		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.READY);
 
 		scheduler.start();
-		assertThat(scheduler.state()).isEqualTo(SchedulerState.LISTEN);
+		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.LISTEN);
 
-		scheduler.suspend();
+		Utils.pause(5);
+		
+		boolean suspended = scheduler.suspend();
+		assertThat(suspended).isTrue();
+		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.SUSPENDED);
+		
+		Utils.pause(5);
+		
+		boolean released = scheduler.release();
+		assertThat(released).isTrue();
+		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.LISTEN);
+		
+		Utils.pause(5);
 		
 		scheduler.shutdown();
 	}

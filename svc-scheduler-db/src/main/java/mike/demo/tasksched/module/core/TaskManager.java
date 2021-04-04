@@ -1,9 +1,12 @@
 package mike.demo.tasksched.module.core;
 
+import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import mike.bootstrap.utilities.exceptions.ResourceAlreadyExistException;
+import mike.demo.tasksched.module.core.repository.TaskRepository;
 import mike.demo.tasksched.module.core.schedule.Schedule;
 import mike.demo.tasksched.module.core.time.TimeProvider;
 
@@ -29,10 +32,17 @@ class TaskManager {
 		return this.taskRepository.find(name);
 	}
 	
+	ZonedDateTime currentDateTime() {
+		return this.timeProvider.currentDateTime();
+	}
+	
 	Task schedule(TaskWorker worker, Schedule when) {
 		Objects.requireNonNull(worker.getName(), "Task name must not be null");
 
-		this.find(worker.getName()).ifPresent(t -> new IllegalArgumentException("Task already exists: " + t.getName()));
+		this.find(worker.getName())
+				.ifPresent(t -> { 
+					throw new ResourceAlreadyExistException("Task already exists: " + t.getName()); 
+				});
 		
 		Task task = new Task(worker, when);
 		task.computeNextExecutionDateTime(timeProvider.currentDateTime());

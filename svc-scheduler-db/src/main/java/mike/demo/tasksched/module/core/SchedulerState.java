@@ -1,38 +1,83 @@
 package mike.demo.tasksched.module.core;
 
-public enum SchedulerState {
+import java.time.ZonedDateTime;
+import java.util.concurrent.ThreadPoolExecutor;
 
-	READY,
-	LISTEN,
-	SUSPENDED,
-	SHUTDOWN,
-	STOPPED;
+import mike.bootstrap.utilities.helpers.Dates;
+
+public class SchedulerState {
+
+	private final String name;
+	private SchedulerStatus status = SchedulerStatus.READY;
+	private ZonedDateTime lastScan = Dates.toZonedDateTimeEpoch();
+	private int minThreads;
+	private int maxThreads;
+	private int activeThreads;
+	private int idleThreads;
+	private int largestPoolSize;
 	
-	public boolean isReady() {
-		return this == READY;
+	protected SchedulerState(String name, ThreadPoolExecutor executor) {		
+		this.name = name;
+		this.setStatistics(executor);
 	}
 	
-	public boolean isListening() {
-		return this == LISTEN;
+	public String getName() {
+		return name;
 	}
 	
-	public boolean isSuspended() {
-		return this == SUSPENDED;
+	public SchedulerStatus getStatus() {
+		return this.status;
 	}
 	
-	public boolean isStopping() {
-		return this.isShuttingDown() || this.isStopped();
+	void setStatus(SchedulerStatus status) {
+		this.status = status; 
+	}
+
+	public ZonedDateTime getLastScan() {
+		return lastScan;
 	}
 	
-	public boolean isNotStopping() {
-		return ! this.isStopping();
+	void setLastScan(ZonedDateTime lastScan) {
+		this.lastScan = lastScan;
 	}
 	
-	public boolean isShuttingDown() {
-		return this == SHUTDOWN;
+	void setLastScan() {
+		this.lastScan = ZonedDateTime.now();
 	}
 	
-	public boolean isStopped() {
-		return this == STOPPED;
+	synchronized void setStatistics(ThreadPoolExecutor executor) {
+		this.minThreads = executor.getCorePoolSize();
+		this.maxThreads = executor.getMaximumPoolSize();
+		this.activeThreads = executor.getActiveCount();
+		this.idleThreads = executor.getPoolSize() - this.activeThreads;
+		this.largestPoolSize = executor.getLargestPoolSize();
 	}
+
+	public int getMinThreads() {
+		return minThreads;
+	}
+
+	public int getMaxThreads() {
+		return maxThreads;
+	}
+
+	public int getActiveThreads() {
+		return activeThreads;
+	}
+
+	public int getIdleThreads() {
+		return idleThreads;
+	}
+
+	public int getLargestPoolSize() {
+		return largestPoolSize;
+	}
+
+	@Override
+	public String toString() {
+		return String.format(
+				"[%s] %s (lastScan=%s, threadPool={min=%d, max=%d, active=%d, idle=%d, largestPoolSize=%d})",
+				name, this.status, Dates.format(lastScan), minThreads, maxThreads, activeThreads, idleThreads, largestPoolSize);
+	}
+
 }
