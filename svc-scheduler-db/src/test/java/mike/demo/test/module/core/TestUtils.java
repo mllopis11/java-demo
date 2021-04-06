@@ -5,7 +5,7 @@ import java.time.format.TextStyle;
 import java.util.Locale;
 import java.util.function.Supplier;
 
-import mike.bootstrap.utilities.helpers.Utils;
+import mike.bootstrap.utilities.helpers.Timer;
 
 class TestUtils {
 
@@ -22,13 +22,13 @@ class TestUtils {
 		while (! condition.get() && waitUntil > currentTime) {
 			synchronized (lockOn) {
 				try {
-					lockOn.wait(5);
+					lockOn.wait(2);
 				} catch (InterruptedException e) {}
 			}
 			
 			currentTime = System.currentTimeMillis();
 		}
 		
-		Utils.pause(2);
+		Timer.pause(2);
 	}
 }

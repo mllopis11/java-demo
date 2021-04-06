@@ -1,4 +1,4 @@
-package mike.demo.tasksched.module.core.schedule;
+package mike.demo.tasksched.library.ruby.schedule;
 
 import java.time.ZonedDateTime;
 import java.util.Locale;

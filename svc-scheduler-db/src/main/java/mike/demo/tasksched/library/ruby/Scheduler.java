@@ -1,27 +1,23 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.library.ruby;
 
 import java.time.Duration;
-import java.util.Optional;
+import java.time.ZonedDateTime;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mike.bootstrap.utilities.helpers.Dates;
-import mike.bootstrap.utilities.helpers.Utils;
-import mike.demo.tasksched.module.core.time.TimeProvider;
-import mike.demo.tasksched.module.core.time.TimeProviderFactory;
-import mike.demo.tasksched.module.core.repository.TaskRepository;
-import mike.demo.tasksched.module.core.repository.TaskRepositoryFactory;
-import mike.demo.tasksched.module.core.schedule.Schedule;
+import mike.bootstrap.utilities.helpers.Timer;
+import mike.demo.tasksched.library.ruby.repository.TaskRepository;
+import mike.demo.tasksched.library.ruby.time.TimeProvider;
 
-public class Scheduler {
+class Scheduler implements RubyScheduler {
 
 	private static final Logger log = LoggerFactory.getLogger(Scheduler.class);
 	
@@ -39,39 +35,42 @@ public class Scheduler {
 	private final AtomicBoolean launcherThreadSuspended = new AtomicBoolean(false);
 	private final int launcherScanIntervalInSeconds; 
 	
-	private Scheduler(Builder builder) {
+	Scheduler(
+			String name, int minThreads, int maxThreads, 
+			int launcherScanIntervalInSeconds, TimeProvider timeProvider,
+			TaskRepository taskRepository) {
 		
-		this.name = builder.name;
-		this.launcherScanIntervalInSeconds = builder.launcherScanIntervalInSeconds; 
+		this.name = name;
+		this.launcherScanIntervalInSeconds = launcherScanIntervalInSeconds; 
 
-		this.taskManager = new TaskManager(builder.taskRepository, builder.timeProvider);
+		this.taskManager = new TaskManager(taskRepository, timeProvider);
 		
 		this.threadPoolExecutor = new ThreadPoolExecutor(
-				builder.minThreads, builder.maxThreads, 
-				10, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), new DefaultThreadFactory());
+				minThreads, maxThreads, 30, TimeUnit.SECONDS, 
+				new LinkedBlockingQueue<>(), new DefaultThreadFactory());
 		
 		this.schedulerState = new SchedulerState(name, threadPoolExecutor);
 		
 		log.info("{}", this.state());
 	}
 	
+	@Override
+	public String name() {
+		return this.name;
+	}
+	
+	@Override
 	public SchedulerState state() {
 		this.schedulerState.setStatistics(threadPoolExecutor);
 		return this.schedulerState;
 	}
 	
-	public SchedulerStatus status() {
-		return this.schedulerState.getStatus();
+	@Override
+	public TaskManagerService taskService() {
+		return this.taskManager;
 	}
 	
-	public Optional<Task> task(String name) {
-		return this.taskManager.find(name);
-	}
-	
-	public Stream<Task> tasks() {
-		return this.taskManager.findAll();
-	}
-	
+	@Override
 	public synchronized boolean start() {
 		
 		if ( launcherThread != null ) {
@@ -93,17 +92,22 @@ public class Scheduler {
 		return this.launcherThreadAlive.get();
 	}
 	
-	public boolean suspend() {
+	@Override
+	public synchronized boolean suspend() {
 		
 		if ( launcherThread == null ) {
 			log.warn("[{}] {} (NotStarted) cannot invoke suspend action on unstarted scheduler !!!", this.name, this.status());
 			return false;
 		}
 		
+		if ( this.status().isSuspended() ) {
+			return true;
+		}
+		
 		this.schedulerState.setStatus(SchedulerStatus.SUSPENDED);
 		
 		while ( ! this.launcherThreadSuspended.get() ) {
-			// Wait
+			Timer.pause(1);
 		}
 		
 		log.warn("{}", this.state());
@@ -111,17 +115,34 @@ public class Scheduler {
 		return this.launcherThreadSuspended.get();
 	}
 	
-	public boolean release() {
+	@Override
+	public synchronized boolean release() {
 		
 		if ( launcherThread == null ) {
 			log.warn("[{}] {} (NotStarted) cannot invoke release action on unstarted scheduler !!!", this.name, this.status());
 			return false;
 		}
 		
+		if ( ! this.status().isSuspended() ) {
+			return true;
+		}
+		
+		log.info("[{}] {} looking for misfired tasks (currentDateTime: {})", 
+				this.name, this.status(), Dates.format(taskManager.currentDateTime()));
+		
+		this.taskManager.findTaskToRun().forEach( task -> {
+			ZonedDateTime wasScheduledAt = task.getNextExecutionDateTime();
+			
+			this.taskManager.rescheduleTask(task);
+			
+			log.info("[{}] misfired tasks {} recheduledAt {} (wasScheduledAt: {})", this.name, task.getName(), 
+					Dates.format(task.getNextExecutionDateTime()), Dates.format(wasScheduledAt));
+		});
+		
 		this.schedulerState.setStatus(SchedulerStatus.LISTEN);
 		
 		while ( this.launcherThreadSuspended.get() ) { 
-			// Wait
+			Timer.pause(1);
 		}
 		
 		log.info("{}", this.state());
@@ -133,14 +154,21 @@ public class Scheduler {
 	 * Cancel queued jobs and Wait until the current running jobs are executed.
 	 * @throws InterruptedException 
 	 */
-	public void shutdown()  {
+	@Override
+	public synchronized void shutdown()  {
+		
+		if ( this.schedulerState.getStatus().isShuttingDown() ) {
+			return;
+		}
 		
 		this.schedulerState.setStatus(SchedulerStatus.SHUTDOWN);
 		this.threadPoolExecutor.shutdown();
 
 		log.info("{}", this.state());
 		
-		while ( this.launcherThreadAlive.get() ) {}
+		while ( this.launcherThreadAlive.get() ) {
+			Timer.pause(1);
+		}
 		
 		try {
 			this.threadPoolExecutor.awaitTermination(shutdownMaxWaitInSeconds.toSeconds(), TimeUnit.SECONDS);
@@ -154,22 +182,14 @@ public class Scheduler {
 		log.info("{}", this.state());
 	}
 	
-	public Task schedule(TaskWorker worker, Schedule when) {
-		Task task = this.taskManager.schedule(worker, when);
-		log.info("[{}] New {}", this.name, task);
-		return task;
-	}
-	
 	/**
 	 * The daemon that will be in charge of placing the jobs in the thread pool
 	 * when they are ready to be executed.
 	 */
 	private void launcher() { 
-		
+
 		this.schedulerState.setStatus(SchedulerStatus.LISTEN);
 		this.launcherThreadAlive.set(true);
-		
-		log.info("[{}] Listener starting ...", this.name);
 		
 		while ( this.status().isNotStopping() ) {
 			
@@ -178,12 +198,13 @@ public class Scheduler {
 				this.schedulerState.setLastScan();
 				this.launcherThreadSuspended.set(false);
 				
-				log.debug("[{}] looking for job to execute (currentDateTime: {})", this.name, Dates.format(taskManager.currentDateTime()));
+				log.debug("[{}] {} Looking for task to execute (currentDateTime: {})", 
+						this.name, this.status(), Dates.format(taskManager.currentDateTime()));
 				
-				this.taskManager.findTasksToRun().forEach( task -> {
+				this.taskManager.findTaskToRun().forEach( task -> {
 					log.info("[{}] submit {} (scheduledAt: {})", this.name, task.getName(), Dates.format(task.getNextExecutionDateTime()));
 					TaskRunner taskRunner = new TaskRunner(task, this.taskManager);
-					this.threadPoolExecutor.submit(taskRunner);
+					this.threadPoolExecutor.execute(taskRunner);
 				});
 				
 			} else if ( this.status().isSuspended() && ! launcherThreadSuspended.get() ) {
@@ -191,7 +212,7 @@ public class Scheduler {
 			} 
 			
 			if ( this.status().isNotStopping() ) {
-				Utils.pause( ! this.launcherThreadSuspended.get() ? launcherScanIntervalInSeconds : 1);
+				Timer.pause( ! this.launcherThreadSuspended.get() ? launcherScanIntervalInSeconds : 1);
 			}
 		}
 		
@@ -221,64 +242,6 @@ public class Scheduler {
 			}
 			
 			return thread;
-		}
-	}
-
-	/**
-	 * Scheduler builder
-	 * 
-	 * @author Mike (2021-03)
-	 */
-	public static class Builder {
-		
-		private final String name;
-		private int minThreads;
-		private int maxThreads;
-		private int launcherScanIntervalInSeconds; 
-		private TimeProvider timeProvider;
-		private TaskRepository taskRepository;
-		
-		public Builder() {
-			this(null);
-		}
-
-		public Builder(String name) {
-			this.name = Utils.trim(name, "TaskScheduler");
-		}
-		
-		public Builder withMinThreads(int minThreads) {
-			this.minThreads = minThreads;
-			return this;
-		}
-		
-		public Builder withMaxThreads(int maxThreads) {
-			this.maxThreads = maxThreads;
-			return this;
-		}
-		
-		public Builder withLauncherScanIntervalInSeconds(int seconds) {
-			this.launcherScanIntervalInSeconds = seconds;
-			return this;
-		}
-		
-		public Builder withTimeProvider(TimeProvider timeProvider) {
-			this.timeProvider = timeProvider;
-			return this;
-		}
-		
-		public Builder withTaskRepository(TaskRepository taskRepository) {
-			this.taskRepository = taskRepository;
-			return this;
-		}
-		
-		public Scheduler build() {
-			this.minThreads = this.minThreads > 10 ? this.minThreads : 5;
-			this.maxThreads = this.maxThreads >= minThreads ? this.maxThreads : 20;
-			this.timeProvider = this.timeProvider != null ? this.timeProvider : TimeProviderFactory.newSystemTimeProvider();
-			this.taskRepository = this.taskRepository != null ? this.taskRepository : TaskRepositoryFactory.newDefaultTaskRepository();
-			this.launcherScanIntervalInSeconds = this.launcherScanIntervalInSeconds >= 5 ? this.launcherScanIntervalInSeconds : 5;
-			
-			return new Scheduler(this);
 		}
 	}
 }

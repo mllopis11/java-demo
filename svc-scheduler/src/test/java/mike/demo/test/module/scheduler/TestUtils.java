@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import mike.bootstrap.utilities.exceptions.ApplicationErrorException;
 import mike.bootstrap.utilities.helpers.Timer;
-import mike.bootstrap.utilities.helpers.Utils;
 import mike.demo.tasksched.module.scheduler.JobTask;
 
 class TestUtils {
@@ -35,7 +34,7 @@ class TestUtils {
 			currentTime = System.currentTimeMillis();
 		}
 		
-		Utils.pause(2);
+		Timer.pause(2);
 	}
 	
 	static class FooTask implements JobTask {
@@ -66,7 +65,7 @@ class TestUtils {
 			
 			log.debug("[Job::{}] started (wait: {} seconds)", name, seconds);
 			
-			tm.pause(seconds);
+			tm.sleep(seconds);
 			
 			if ( throwException ) {
 				log.debug("[Job::{}] aborted (elapsed: {})", name, tm.elapsTime());

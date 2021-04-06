@@ -1,4 +1,4 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.library.ruby;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,14 +9,18 @@ class TaskRunner implements Runnable {
 
 	private static final Logger log = LoggerFactory.getLogger(TaskRunner.class);
 
-	private final Task task;
 	private final TaskManager taskManager;
+	private final Task task;
+	
+	private final String uuid;
 	
 	TaskRunner(Task task, TaskManager taskManager) {
 		this.task = task;
 		this.taskManager = taskManager;
 		
-		this.taskManager.setTaskQueued(task);
+		uuid = this.taskManager.setTaskQueued(task.getName());
+		
+		log.info("[TaskRunner] Task '{}' (uuid: {}) created", task.getName(), uuid);;
 	}
 	
 	@Override
@@ -24,14 +28,14 @@ class TaskRunner implements Runnable {
 		
 		Timer tm = new Timer();
 		
-		this.taskManager.setTaskRunning(task);
+		this.taskManager.setTaskRunning(uuid);
 		
-		log.info("[TaskRunner] Task '{}' started ...", task.getName());
+		log.info("[TaskRunner] Task '{}' (uuid: {}) started ...", task.getName(), uuid);
 		
 		this.task.getWorker().invoke();
 		
-		this.taskManager.setTaskCompleted(task);
+		this.taskManager.setTaskSuccess(uuid);
 		
-		log.info("[TaskRunner] Task '{}' completed (elapsed: {})", task.getName(), tm.toSeconds());
+		log.info("[TaskRunner] Task '{}' (uuid: {}) completed (elapsed: {})", task.getName(), uuid, tm.toSeconds());
 	}
 }

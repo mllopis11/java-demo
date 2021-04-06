@@ -7,16 +7,26 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.IntStream;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import mike.bootstrap.utilities.helpers.Utils;
-import mike.demo.tasksched.module.core.time.TimeProvider;
-import mike.demo.tasksched.module.core.time.TimeProviderFactory;
+import mike.bootstrap.utilities.helpers.Timer;
+import mike.demo.tasksched.library.ruby.time.TimeProvider;
+import mike.demo.tasksched.library.ruby.time.TimeProviderFactory;
 
 @DisplayName("Scheduler::TimeProvider")
 class TimeProviderTest {
 
+	private static final Logger log = LoggerFactory.getLogger(TimeProviderTest.class);
+	
+	@BeforeAll
+	static void init() {
+		log.debug("***** Time Provider *****");
+	}
+	
 	@Test
 	void should_return_same_datetime_when_fixed_time_provider() {
 		
@@ -26,7 +36,7 @@ class TimeProviderTest {
 		
 		IntStream.range(0, 3).forEach( i -> {
 			assertThat(fixedTimeProvider.currentDateTime()).isEqualTo(fixedDateTime);
-			Utils.pause(2);
+			Timer.pause(2);
 		});
 	}
 	
@@ -43,7 +53,7 @@ class TimeProviderTest {
 			assertThat(ajustedTimeProvider.currentDateTime().truncatedTo(ChronoUnit.SECONDS))
 				.isEqualTo(ZonedDateTime.now().plusSeconds(adjustSeconds).truncatedTo(ChronoUnit.SECONDS));
 			
-			Utils.pause(1);
+			Timer.pause(1);
 		});
 	}
 	
@@ -56,7 +66,7 @@ class TimeProviderTest {
 			assertThat(ajustedTimeProvider.currentDateTime().truncatedTo(ChronoUnit.SECONDS))
 				.isEqualTo(ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 			
-			Utils.pause(1);
+			Timer.pause(1);
 		});
 	}
 }

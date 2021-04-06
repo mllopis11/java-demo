@@ -1,10 +1,10 @@
-package mike.demo.tasksched.module.core.repository;
+package mike.demo.tasksched.library.ruby.repository;
 
 public class TaskRepositoryFactory {
 
 	private TaskRepositoryFactory() {}
 	
 	public static TaskRepository newDefaultTaskRepository() {
-		return new TaskRepositoryDefault();
+		return new TaskRepositoryDefaultImpl();
 	}
 }

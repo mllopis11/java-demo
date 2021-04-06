@@ -22,7 +22,6 @@
     </properties>
     
     <modules>
-        <module>./svc-scheduler</module>
         <module>./svc-scheduler-db</module>
     </modules>
     

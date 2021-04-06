@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -13,15 +14,20 @@ import org.slf4j.LoggerFactory;
 
 import com.cronutils.model.field.expression.Weekdays;
 
-import mike.demo.tasksched.module.core.schedule.Schedule;
-import mike.demo.tasksched.module.core.schedule.ScheduleFactory;
-import mike.demo.tasksched.module.core.time.TimeProvider;
-import mike.demo.tasksched.module.core.time.TimeProviderFactory;
+import mike.demo.tasksched.library.ruby.schedule.Schedule;
+import mike.demo.tasksched.library.ruby.schedule.ScheduleFactory;
+import mike.demo.tasksched.library.ruby.time.TimeProvider;
+import mike.demo.tasksched.library.ruby.time.TimeProviderFactory;
 
 @DisplayName("Scheduler::Schedule")
 class ScheduleTest {
 
 	private static final Logger log = LoggerFactory.getLogger(ScheduleTest.class);  
+		
+	@BeforeAll
+	static void init() {
+		log.debug("***** Schedule Computation *****");
+	}
 	
 	@Test
 	void should_return_next_execution_time_minus_one_when_disabled_schedule() {

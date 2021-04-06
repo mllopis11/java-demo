@@ -10,10 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
-import mike.bootstrap.utilities.helpers.Utils;
-import mike.demo.tasksched.module.core.Scheduler;
-import mike.demo.tasksched.module.core.SchedulerStatus;
-import mike.demo.tasksched.module.core.SchedulerState;
+import mike.bootstrap.utilities.helpers.Timer;
+import mike.demo.tasksched.library.ruby.RubyScheduler;
+import mike.demo.tasksched.library.ruby.RubySchedulerBuilder;
+import mike.demo.tasksched.library.ruby.SchedulerState;
+import mike.demo.tasksched.library.ruby.SchedulerStatus;
 
 @DisplayName("Scheduler::Scheduler")
 @TestMethodOrder(OrderAnnotation.class)
@@ -24,7 +25,7 @@ class SchedulerTest {
 	@Test
 	@Order(1)
 	void should_return_scheduler_stats_when_default_config() {
-		Scheduler scheduler = new Scheduler.Builder().build();
+		RubyScheduler scheduler = new RubySchedulerBuilder().build();
 		SchedulerState stats = scheduler.state();
 		
 		assertThat(stats.getStatus().isReady()).isTrue();
@@ -33,8 +34,6 @@ class SchedulerTest {
 		assertThat(stats.getActiveThreads()).isZero();
 		assertThat(stats.getIdleThreads()).isZero();
 		assertThat(stats.getLargestPoolSize()).isZero();
-		
-		scheduler.shutdown();
 	}
 	
 	@Test
@@ -43,26 +42,26 @@ class SchedulerTest {
 		
 		log.debug("***** Should Suspend then Release Scheduler *****");
 		
-		Scheduler scheduler = new Scheduler.Builder().build();
+		RubyScheduler scheduler = new RubySchedulerBuilder().build();
 		
 		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.READY);
 
 		scheduler.start();
 		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.LISTEN);
 
-		Utils.pause(5);
+		Timer.pause(2);
 		
 		boolean suspended = scheduler.suspend();
 		assertThat(suspended).isTrue();
 		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.SUSPENDED);
 		
-		Utils.pause(5);
+		Timer.pause(2);
 		
 		boolean released = scheduler.release();
 		assertThat(released).isTrue();
 		assertThat(scheduler.status()).isEqualTo(SchedulerStatus.LISTEN);
 		
-		Utils.pause(5);
+		Timer.pause(2);
 		
 		scheduler.shutdown();
 	}

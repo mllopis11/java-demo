@@ -1,4 +1,4 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.library.ruby;
 
 public interface TaskWorker {
 

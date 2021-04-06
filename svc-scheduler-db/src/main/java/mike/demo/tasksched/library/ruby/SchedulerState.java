@@ -1,4 +1,4 @@
-package mike.demo.tasksched.module.core;
+package mike.demo.tasksched.library.ruby;
 
 import java.time.ZonedDateTime;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -8,6 +8,8 @@ import mike.bootstrap.utilities.helpers.Dates;
 public class SchedulerState {
 
 	private final String name;
+	private final ZonedDateTime startedAt = ZonedDateTime.now();
+	
 	private SchedulerStatus status = SchedulerStatus.READY;
 	private ZonedDateTime lastScan = Dates.toZonedDateTimeEpoch();
 	private int minThreads;
@@ -25,12 +27,16 @@ public class SchedulerState {
 		return name;
 	}
 	
+	public ZonedDateTime getStartedAt() {
+		return startedAt;
+	}
+
 	public SchedulerStatus getStatus() {
 		return this.status;
 	}
 	
 	void setStatus(SchedulerStatus status) {
-		this.status = status; 
+		this.status = status;
 	}
 
 	public ZonedDateTime getLastScan() {
@@ -76,8 +82,9 @@ public class SchedulerState {
 	@Override
 	public String toString() {
 		return String.format(
-				"[%s] %s (lastScan=%s, threadPool={min=%d, max=%d, active=%d, idle=%d, largestPoolSize=%d})",
-				name, this.status, Dates.format(lastScan), minThreads, maxThreads, activeThreads, idleThreads, largestPoolSize);
+				"[%s] %s (lastScan=%s, threadPool={min=%d, max=%d, active=%d, idle=%d, largestPoolSize=%d}, startedAt=%s)",
+				name, this.status, Dates.format(lastScan), minThreads, maxThreads, activeThreads, idleThreads,
+				largestPoolSize, Dates.format(startedAt));
 	}
 
 }
