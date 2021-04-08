@@ -1,4 +1,4 @@
-package mike.demo.tasksched.library.web.rest;
+package mike.demo.tasksched.library.ruby.web.rest;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
