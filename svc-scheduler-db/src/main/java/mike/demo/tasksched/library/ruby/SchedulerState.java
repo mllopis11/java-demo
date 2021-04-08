@@ -3,15 +3,22 @@ package mike.demo.tasksched.library.ruby;
 import java.time.ZonedDateTime;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import mike.bootstrap.utilities.helpers.Dates;
 
 public class SchedulerState {
 
 	private final String name;
-	private final ZonedDateTime startedAt = ZonedDateTime.now();
 	
 	private SchedulerStatus status = SchedulerStatus.READY;
+	
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+	private final ZonedDateTime startedAt = ZonedDateTime.now();
+	
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 	private ZonedDateTime lastScan = Dates.toZonedDateTimeEpoch();
+	
 	private int minThreads;
 	private int maxThreads;
 	private int activeThreads;
@@ -82,7 +89,7 @@ public class SchedulerState {
 	@Override
 	public String toString() {
 		return String.format(
-				"[%s] %s (lastScan=%s, threadPool={min=%d, max=%d, active=%d, idle=%d, largestPoolSize=%d}, startedAt=%s)",
+				"[%s] (%s) lastScan=%s, threadPool={min=%d, max=%d, active=%d, idle=%d, largestPoolSize=%d}, startedAt=%s",
 				name, this.status, Dates.format(lastScan), minThreads, maxThreads, activeThreads, idleThreads,
 				largestPoolSize, Dates.format(startedAt));
 	}

@@ -74,7 +74,7 @@ class Scheduler implements RubyScheduler {
 	public synchronized boolean start() {
 		
 		if ( launcherThread != null ) {
-			log.warn("[{}] {} (already started)", this.name, this.status());
+			log.warn("[{}] ({}) Already started", this.name, this.status());
 			return false;
 		}
 		
@@ -96,7 +96,7 @@ class Scheduler implements RubyScheduler {
 	public synchronized boolean suspend() {
 		
 		if ( launcherThread == null ) {
-			log.warn("[{}] {} (NotStarted) cannot invoke suspend action on unstarted scheduler !!!", this.name, this.status());
+			log.warn("[[{}] ({}) Not started (cannot invoke suspend action on unstarted scheduler !)", this.name, this.status());
 			return false;
 		}
 		
@@ -119,7 +119,7 @@ class Scheduler implements RubyScheduler {
 	public synchronized boolean release() {
 		
 		if ( launcherThread == null ) {
-			log.warn("[{}] {} (NotStarted) cannot invoke release action on unstarted scheduler !!!", this.name, this.status());
+			log.warn("[[{}] ({}) Not started (cannot invoke suspend action on unstarted scheduler !)", this.name, this.status());
 			return false;
 		}
 		
@@ -127,7 +127,7 @@ class Scheduler implements RubyScheduler {
 			return true;
 		}
 		
-		log.info("[{}] {} looking for misfired tasks (currentDateTime: {})", 
+		log.info("[{}] ({}) Looking for misfired tasks to reschedule (currentDateTime: {})", 
 				this.name, this.status(), Dates.format(taskManager.currentDateTime()));
 		
 		this.taskManager.findTaskToRun().forEach( task -> {
@@ -198,7 +198,7 @@ class Scheduler implements RubyScheduler {
 				this.schedulerState.setLastScan();
 				this.launcherThreadSuspended.set(false);
 				
-				log.debug("[{}] {} Looking for task to execute (currentDateTime: {})", 
+				log.debug("[{}] ({}) Looking for task to execute (currentDateTime: {})", 
 						this.name, this.status(), Dates.format(taskManager.currentDateTime()));
 				
 				this.taskManager.findTaskToRun().forEach( task -> {
@@ -216,7 +216,7 @@ class Scheduler implements RubyScheduler {
 			}
 		}
 		
-		log.info("[{}] Listener stopped", this.name);
+		log.info("[{}] ({}) Listener stopped", this.name, this.status());
 		
 		this.launcherThreadAlive.set(false);
 	}
