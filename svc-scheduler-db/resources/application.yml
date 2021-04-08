@@ -20,6 +20,6 @@ springdoc:
   swagger-ui:
     enabled: true
     display-request-duration: true
-    operationsSorter: alpha
+    operationsSorter: method
     tagsSorter: alpha
     doc-expansion: list
