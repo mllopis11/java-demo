@@ -6,18 +6,33 @@ import javax.validation.constraints.Size;
 public class TaskModel {
 
 	@NotBlank
-	@Size(min = 5, max = 64)
+	@Size(min = 3, max = 32)
+	private String group;
+
+	@NotBlank
+	@Size(min = 5, max = 32)
 	private String name;
-	
+
 	@NotBlank
 	@Size(min = 10, max = 128)
 	private String description;
-	
+
 	@NotBlank
 	private String cronExpression;
-	
+
+	@NotBlank
+	private String workerClassName;
+
 	private boolean enabled = true;
-	
+
+	public String getGroup() {
+		return group;
+	}
+
+	public void setGroup(String group) {
+		this.group = group;
+	}
+
 	public String getName() {
 		return name;
 	}
@@ -42,6 +57,14 @@ public class TaskModel {
 		this.cronExpression = cronExpression;
 	}
 
+	public String getWorkerClassName() {
+		return workerClassName;
+	}
+
+	public void setWorkerClassName(String workerClassName) {
+		this.workerClassName = workerClassName;
+	}
+
 	public boolean isEnabled() {
 		return enabled;
 	}
@@ -52,7 +75,17 @@ public class TaskModel {
 
 	@Override
 	public String toString() {
-		return String.format("TaskModel [name=%s, description=%s, cronExpression=%s, enabled=%s]", 
-				name, description, cronExpression, enabled);
+		StringBuilder builder = new StringBuilder("TaskModel [");
+
+		// @formatter:off
+		builder.append("group=").append(group)
+				.append(", name=").append(name)
+				.append(", description=").append(description)
+				.append(", cronExpression=").append(cronExpression)
+				.append(", workerClassName=").append(workerClassName)
+				.append(", enabled=").append(enabled);
+		// @formatter:on
+
+		return builder.append("]").toString();
 	}
 }

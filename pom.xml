@@ -19,6 +19,11 @@
     <properties>
         <application.name>Demo</application.name>
         <module.name>Demo-Parent</module.name>
+        
+        <!-- Compilers -->
+        <java.version>16</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
     </properties>
     
     <modules>

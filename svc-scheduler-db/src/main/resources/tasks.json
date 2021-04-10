@@ -1,6 +1,7 @@
 [
  {
-  "name": "DEMO::FOO",
+  "group": "DEMO",
+  "name": "FOO",
   "description": "Demo. task FOO",
   "cronExpresion": "0 0 12 ? * MON-FRI *",
   "enabled": true 

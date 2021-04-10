@@ -57,7 +57,7 @@ class TaskManager implements TaskManagerService {
 		
 		return task;
 	}
-
+	
 	@Override
 	public synchronized Task enableTask(String name, boolean enabled) {
 		Task task = this.findTask(name)

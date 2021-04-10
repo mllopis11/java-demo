@@ -5,6 +5,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +22,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import mike.bootstrap.springboot.openapi.problem.ProblemResponsesReference;
 import mike.demo.tasksched.library.ruby.RubyScheduler;
+import mike.demo.tasksched.library.ruby.web.model.TaskModel;
 import mike.demo.tasksched.library.ruby.web.model.TaskView;
 
 @RestController
@@ -46,5 +50,18 @@ class SchedulerTaskResources {
 	public List<TaskView> findTasks() {
 		log.info("Task::request: retrieve all tasks ...");
 		return this.scheduler.taskService().findAllTask().map(TaskView::new).collect(Collectors.toList());
+	}
+	
+	@Operation(
+			summary = "Create new task", 
+			description = "Create a new task and returns the created task details.<br>")
+	@ApiResponse(responseCode = "200", description = "Task",
+			content = @Content(
+					mediaType = APPLICATION_JSON_VALUE, 
+					schema = @Schema(implementation = TaskView.class)))
+	@ApiResponse(responseCode = "500", ref = ProblemResponsesReference.INTERNAL_SERVER_ERROR_500)
+	@GetMapping("/")
+	public TaskView create(@NotNull @Valid TaskModel taskModel) {
+		return null;
 	}
 }
