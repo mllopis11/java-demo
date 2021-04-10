@@ -10,7 +10,7 @@ import mike.demo.tasksched.library.ruby.RubySchedulerBuilder;
 class SchedulerConfiguration {
 	
 	@Bean
-	public RubyScheduler rebyScheduler() {
+	public RubyScheduler rubyScheduler() {
 		return new RubySchedulerBuilder().build();
 	}
 }

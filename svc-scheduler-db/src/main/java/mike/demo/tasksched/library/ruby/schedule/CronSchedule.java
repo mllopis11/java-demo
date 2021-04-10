@@ -27,17 +27,19 @@ class CronSchedule implements Schedule {
 
 	private static final CronDescriptor ENGLISH_DESCRIPTOR = CronDescriptor.instance(Locale.ENGLISH);
 
-	private final ExecutionTime cronExpression;
+	private final Cron cronExpression;
+	private final ExecutionTime cronExecutionTime;
 	private final String description;
 
 	private CronSchedule(Cron cronExpression) {
-		this.cronExpression = ExecutionTime.forCron(cronExpression);
+		this.cronExpression = cronExpression;
+		this.cronExecutionTime = ExecutionTime.forCron(cronExpression);
 		this.description = ENGLISH_DESCRIPTOR.describe(cronExpression);
 	}
 
 	@Override
 	public ZonedDateTime nextExecutionDateTime(ZonedDateTime currentDateTime) {
-		return cronExpression.timeToNextExecution(currentDateTime)
+		return cronExecutionTime.timeToNextExecution(currentDateTime)
 					.map(currentDateTime::plus)
 					.orElseGet(() -> WILL_NOT_BE_EXECUTED_AGAIN);
 	}
@@ -45,6 +47,11 @@ class CronSchedule implements Schedule {
 	@Override
 	public String description() {
 		return description;
+	}
+	
+	@Override
+	public String cronExpression() {
+		return cronExpression.asString();
 	}
 	
 	@Override

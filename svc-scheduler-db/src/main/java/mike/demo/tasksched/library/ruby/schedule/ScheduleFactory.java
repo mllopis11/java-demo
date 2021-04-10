@@ -27,6 +27,11 @@ public class ScheduleFactory {
 		public String description() {
 			return "Disabled schedule";
 		}
+
+		@Override
+		public String cronExpression() {
+			return "";
+		}
 	};
 	
 	public static Schedule withCronExpression(String cronExpression) {

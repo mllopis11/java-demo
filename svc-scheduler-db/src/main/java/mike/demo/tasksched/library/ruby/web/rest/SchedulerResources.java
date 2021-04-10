@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -38,7 +37,7 @@ class SchedulerResources {
 	@ApiResponse(responseCode = "200", description = "Current scheduler state", 
 			content = @Content(
 					mediaType = APPLICATION_JSON_VALUE, 
-					array = @ArraySchema(schema = @Schema(implementation = SchedulerState.class))))
+					schema = @Schema(implementation = SchedulerState.class)))
 	@ApiResponse(responseCode = "500", ref = ProblemResponsesReference.INTERNAL_SERVER_ERROR_500)
 	@GetMapping("/state")
 	public SchedulerState state() {
@@ -53,7 +52,7 @@ class SchedulerResources {
 	@ApiResponse(responseCode = "200", description = "Current scheduler state", 
 			content = @Content(
 					mediaType = APPLICATION_JSON_VALUE, 
-					array = @ArraySchema(schema = @Schema(implementation = SchedulerState.class))))
+					schema = @Schema(implementation = SchedulerState.class)))
 	@ApiResponse(responseCode = "500", ref = ProblemResponsesReference.INTERNAL_SERVER_ERROR_500)
 	@PutMapping("/suspend")
 	public SchedulerState suspend() {
@@ -68,7 +67,7 @@ class SchedulerResources {
 	@ApiResponse(responseCode = "200", description = "Current scheduler state", 
 			content = @Content(
 					mediaType = APPLICATION_JSON_VALUE, 
-					array = @ArraySchema(schema = @Schema(implementation = SchedulerState.class))))
+					schema = @Schema(implementation = SchedulerState.class)))
 	@ApiResponse(responseCode = "500", ref = ProblemResponsesReference.INTERNAL_SERVER_ERROR_500)
 	@PutMapping("/release")
 	public SchedulerState release() {

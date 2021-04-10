@@ -20,4 +20,6 @@ public interface Schedule {
 	 * @return human understandable description of the schedule
 	 */
 	String description();
+	
+	String cronExpression();
 }
