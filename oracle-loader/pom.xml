@@ -10,12 +10,12 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>demo-db-data-loader</artifactId>
+    <artifactId>demo-oracle-loader</artifactId>
     <description>Simulate Oracle SQL*Loader</description>
     <packaging>jar</packaging>
 
     <properties>
-        <module.name>Data-Loader</module.name>
+        <module.name>Oracle-Loader</module.name>
     </properties>
 
     <dependencies>
